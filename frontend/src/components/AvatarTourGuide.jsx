@@ -145,37 +145,41 @@ export default function AvatarTourGuide({ isOpen, onClose }) {
   
   const [currentStep, setCurrentStep] = useState(0);
   const [isAutoPlay, setIsAutoPlay] = useState(false);
-  const [targetRect, setTargetRect] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
       setCurrentStep(0);
       setIsAutoPlay(false);
       playAppleChime();
+    } else {
+      // Clean up highlights
+      document.querySelectorAll('.tour-active-highlight').forEach(el => {
+        el.classList.remove('tour-active-highlight');
+      });
     }
   }, [isOpen]);
 
-  // Position highlight relative to element
+  // Clean and apply active highlight directly on DOM element
   useEffect(() => {
     if (!isOpen) return;
+
+    // Remove previous highlights
+    document.querySelectorAll('.tour-active-highlight').forEach(el => {
+      el.classList.remove('tour-active-highlight');
+    });
 
     const step = steps[currentStep];
     if (!step) return;
 
     const el = document.getElementById(step.targetId);
     if (el) {
-      const rect = el.getBoundingClientRect();
-      setTargetRect({
-        top: rect.top + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: rect.width,
-        height: rect.height
-      });
-      // Scroll into view smoothly
+      el.classList.add('tour-active-highlight');
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else {
-      setTargetRect(null);
     }
+
+    return () => {
+      if (el) el.classList.remove('tour-active-highlight');
+    };
   }, [isOpen, currentStep, steps]);
 
   // Auto-play timer
@@ -219,26 +223,7 @@ export default function AvatarTourGuide({ isOpen, onClose }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, pointerEvents: 'none' }}>
       
-      {/* Target Element Highlight Box - Crisp glowing ring with NO dark background */}
-      {targetRect && (
-        <div 
-          style={{
-            position: 'absolute',
-            top: targetRect.top - 6,
-            left: targetRect.left - 6,
-            width: targetRect.width + 12,
-            height: targetRect.height + 12,
-            borderRadius: '16px',
-            border: '3px solid #D97706',
-            boxShadow: '0 0 0 4px rgba(217, 119, 6, 0.25), 0 8px 24px rgba(217, 119, 6, 0.2)',
-            pointerEvents: 'none',
-            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-            zIndex: 10000
-          }}
-        />
-      )}
-
-      {/* Tour Card Modal */}
+      {/* Tour Card Modal - Clean, floating, non-intrusive */}
       <div 
         style={{
           position: 'fixed',

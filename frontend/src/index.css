@@ -43,6 +43,14 @@
   --transition: all 0.2s ease-in-out;
 }
 
+/* Tour Active Focus Ring */
+.tour-active-highlight {
+  outline: 3px solid #D97706 !important;
+  outline-offset: 4px !important;
+  box-shadow: 0 0 0 6px rgba(217, 119, 6, 0.25), 0 8px 24px rgba(217, 119, 6, 0.2) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
 [data-theme="dark"] {
   --bg-page: #0B0F17;               /* Deep Obsidian */
   --bg-surface: #1E293B;            /* Solid Slate 800 */
