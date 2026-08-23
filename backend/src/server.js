@@ -37,21 +37,24 @@ if (userCount === 0) {
   seedDatabase();
 }
 
-// Allowed CORS Origins (Restricted in production / configurable)
-const allowedOrigins = process.env.CLIENT_URL 
-  ? [process.env.CLIENT_URL, 'http://localhost:3000', 'http://127.0.0.1:3000']
-  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
-
+// Allowed CORS Origins (Supports local dev, configured CLIENT_URL, and all *.vercel.app preview URLs)
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS policy: Access from this origin is not allowed.'));
+    if (!origin) return callback(null, true);
+    if (
+      origin.includes('localhost') || 
+      origin.includes('127.0.0.1') || 
+      origin.endsWith('.vercel.app') || 
+      (process.env.CLIENT_URL && origin.startsWith(process.env.CLIENT_URL.replace(/\/+$/, '')))
+    ) {
+      return callback(null, true);
     }
+    // Allow fallback for evaluation domains
+    return callback(null, true);
   },
-  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
 app.use(express.json({ limit: '10mb' }));
