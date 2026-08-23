@@ -1,4 +1,7 @@
-const API_BASE = '/api/v1';
+const rawApiUrl = (import.meta.env.VITE_API_URL || '').trim();
+const API_BASE = rawApiUrl 
+  ? (rawApiUrl.endsWith('/api/v1') ? rawApiUrl : `${rawApiUrl.replace(/\/+$/, '')}/api/v1`) 
+  : '/api/v1';
 
 /**
  * Generic request helper
