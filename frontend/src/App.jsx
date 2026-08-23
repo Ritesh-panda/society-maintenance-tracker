@@ -28,21 +28,11 @@ export default function App() {
   const [showAvatarTour, setShowAvatarTour] = useState(false);
   const [dataVersion, setDataVersion] = useState(0); // Trigger reload
 
+  // Theme sync
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('society_theme', theme);
   }, [theme]);
-
-  // Prompt onboarding tour on first login for each distinct user
-  useEffect(() => {
-    if (user) {
-      const userTourKey = `tour_viewed_${user.id}_${user.role}`;
-      if (!sessionStorage.getItem(userTourKey)) {
-        setShowAvatarTour(true);
-        sessionStorage.setItem(userTourKey, 'true');
-      }
-    }
-  }, [user]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');

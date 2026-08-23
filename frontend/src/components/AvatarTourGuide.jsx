@@ -217,15 +217,9 @@ export default function AvatarTourGuide({ isOpen, onClose }) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, pointerEvents: 'auto' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, pointerEvents: 'none' }}>
       
-      {/* Dimmed backdrop */}
-      <div 
-        style={{ position: 'absolute', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(2px)' }}
-        onClick={onClose}
-      />
-
-      {/* Target Element Highlight Box */}
+      {/* Target Element Highlight Box - Crisp glowing ring with NO dark background */}
       {targetRect && (
         <div 
           style={{
@@ -235,8 +229,8 @@ export default function AvatarTourGuide({ isOpen, onClose }) {
             width: targetRect.width + 12,
             height: targetRect.height + 12,
             borderRadius: '16px',
-            boxShadow: '0 0 0 9999px rgba(15, 23, 42, 0.65)',
-            border: '2px solid #D97706',
+            border: '3px solid #D97706',
+            boxShadow: '0 0 0 4px rgba(217, 119, 6, 0.25), 0 8px 24px rgba(217, 119, 6, 0.2)',
             pointerEvents: 'none',
             transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
             zIndex: 10000
@@ -254,10 +248,11 @@ export default function AvatarTourGuide({ isOpen, onClose }) {
           width: 'calc(100vw - 64px)',
           background: 'var(--bg-surface)',
           borderRadius: 'var(--radius-squircle-md)',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.18)',
           border: '1px solid var(--border-color)',
           padding: '24px',
           zIndex: 10001,
+          pointerEvents: 'auto',
           animation: 'fadeIn 0.25s ease'
         }}
       >
