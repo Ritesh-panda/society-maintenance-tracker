@@ -112,8 +112,8 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    actor Resident as "👤 Resident Actor"
-    actor Admin as "🛡️ Estate Admin / RWA"
+    Resident["👤 Resident Actor"]
+    Admin["🛡️ Estate Admin / RWA"]
 
     subgraph PortalUseCases ["Gulmohar Meadows Society Portal"]
         UC1(["Self-Register Flat & Account"])
@@ -124,10 +124,10 @@ flowchart LR
         
         UC6(["Approve / Reject Resident Signups"])
         UC7(["Filter & Search Operations Queue"])
-        UC8(["Update Status (Open → In Progress → Resolved)"])
+        UC8(["Update Status: Open → In Progress → Resolved"])
         UC9(["Assign Priority & Append Audit Remarks"])
         UC10(["Publish Pinned Emergency Notice & Email All"])
-        UC11(["Reconfigure SLA Overdue Threshold (1-60 Days)"])
+        UC11(["Reconfigure SLA Overdue Threshold: 1-60 Days"])
         UC12(["Inspect Live Email Stream Outbox"])
     end
 
