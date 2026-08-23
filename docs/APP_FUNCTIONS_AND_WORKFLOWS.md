@@ -434,9 +434,9 @@ CREATE TABLE settings (
 
 ### 6.1 Dynamic Overdue Age Calculation (`overdueService.js`)
 * **Mathematical Formula:**
-  $$\text{Days Open} = \left\lfloor \frac{\text{Now} - \text{Created Time}}{86,400,000 \text{ ms}} \right\rfloor$$
+  $$\text{DaysOpen} = \left\lfloor \frac{T_{\text{now}} - T_{\text{created}}}{86,400,000\text{ ms}} \right\rfloor$$
 * **SLA Overdue Condition:**
-  $$\text{is\_overdue} = (\text{status} \neq \text{'Resolved'}) \land (\text{Days Open} \ge \text{Threshold})$$
+  $$\text{IsOverdue} = (\text{Status} \neq \text{'Resolved'}) \land (\text{DaysOpen} \ge \text{Threshold})$$
 
 ### 6.2 Multi-Criteria Priority Sort Algorithm
 1. **Tier 1 (Emergency Overdue):** `is_overdue === true` bubbled to top.
