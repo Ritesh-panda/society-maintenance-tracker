@@ -25,32 +25,32 @@ const RESIDENT_STEPS = [
     targetId: 'tour-nav-tabs',
     title: "1. Navigation Bar & Views",
     badge: "Resident Demo: Navigation",
-    speech: "Welcome to Gulmohar Meadows! I am Aria, your personal Estate Concierge. This top navigation bar allows you to seamlessly switch between your active home maintenance requests and the official society notice board.",
+    speech: "Welcome to Gulmohar Meadows! This top navigation bar allows you to seamlessly switch between your active home maintenance requests and the official society notice board.",
     tip: "Click tabs anytime to toggle views instantly with zero page reloads.",
     placement: 'bottom'
   },
   {
     targetId: 'tour-btn-request',
-    title: "2. Zero-Type Care Request",
+    title: "2. Visual Care Request",
     badge: "Resident Demo: Lodge Issue",
-    speech: "Whenever you encounter a maintenance problem, click 'Request Service'! Our visual interface features 3D room tiles (Bathroom, Kitchen, Balcony) and a 1-click Auto-Draft assistant that fills in technical details for you.",
-    tip: "You can also pick 1-hour arrival slots and attach photo evidence.",
+    speech: "Whenever you encounter a maintenance problem, click 'Request Service'! Our visual interface features room tiles (Bathroom, Kitchen, Balcony) and an Auto-Draft assistant that fills in technical details for you.",
+    tip: "You can also pick preferred arrival slots and attach photo evidence.",
     placement: 'bottom'
   },
   {
     targetId: 'tour-hero-ring',
-    title: "3. Peace of Mind Health Ring",
-    badge: "Resident Demo: Live Health",
-    speech: "This concentric status ring gives you an instant live summary of your apartment and estate health. It pulses with an ambient amber glow during active dispatches and turns green when all tickets are resolved.",
+    title: "3. Real-Time Status Ring",
+    badge: "Resident Demo: Live Status",
+    speech: "This concentric status ring gives you an instant summary of your apartment and estate health. It reflects the status of your active requests and updates when tickets are resolved.",
     tip: "Displays real-time percentage ratios of resolved vs active repairs.",
     placement: 'bottom'
   },
   {
     targetId: 'tour-complaints-grid',
-    title: "4. 3-Stage Progress Stepper",
-    badge: "Resident Demo: Delivery Tracker",
-    speech: "Every complaint displays a live 3-stage progress stepper (1. Received → 2. Dispatched → 3. Handled). Click on any card to open the timeline drawer, view the live technician gate map, and inspect your digital NFC Gate Pass!",
-    tip: "Any ticket open past the SLA threshold (3 days) is highlighted in red for urgent attention.",
+    title: "4. 3-Stage Lifecycle Stepper",
+    badge: "Resident Demo: Status Tracker",
+    speech: "Every complaint displays a live 3-stage progress stepper (1. Received → 2. Dispatched → 3. Handled). Click on any card to open the complete chronological timeline and audit trail.",
+    tip: "Any ticket open past the SLA threshold (3 days) is flagged for urgent attention.",
     placement: 'top'
   },
   {
@@ -65,17 +65,9 @@ const RESIDENT_STEPS = [
     targetId: 'tour-btn-outbox',
     title: "6. Email Stream Inspector",
     badge: "Resident Demo: Live Outbox",
-    speech: "Click 'Email Stream' to inspect the live transactional email logs and see full rendered HTML previews of status updates and notices dispatched to residents in real time.",
+    speech: "Click 'Email Stream' to inspect transactional email logs and see full rendered HTML previews of status updates and notices dispatched in real time.",
     tip: "Inspect email delivery timestamps, recipient lists, and formatted templates.",
     placement: 'bottom'
-  },
-  {
-    targetId: 'tour-chatbot-launcher',
-    title: "7. 24/7 AI Concierge Assistant",
-    badge: "Resident Demo: AI Support",
-    speech: "I am stationed right here at the bottom right corner! Tap my icon anytime to ask questions about plumbing leaks, electrical tripping, elevator AMC, or society bylaws.",
-    tip: "I can also navigate the app and lodge complaints for you automatically.",
-    placement: 'top'
   }
 ];
 
@@ -85,7 +77,7 @@ const ADMIN_STEPS = [
     targetId: 'tour-nav-tabs',
     title: "1. RWA Operations Console",
     badge: "Admin Demo: Overview",
-    speech: "Welcome! I am Aria, presenting the RWA Estate Administration system for you. This console provides complete executive oversight over maintenance tickets, vendor dispatch, and resident communications.",
+    speech: "Welcome to the RWA Estate Administration system. This console provides complete executive oversight over maintenance tickets, vendor dispatch, and resident communications.",
     tip: "Toggle between the live estate queue and the digital notice board.",
     placement: 'bottom'
   },
@@ -142,16 +134,8 @@ const ADMIN_STEPS = [
     title: "8. Live Outbox & SMTP Inspector",
     badge: "Admin Demo: Communication Log",
     speech: "Click 'Email Stream' in the navbar to inspect all delivered transactional emails, check recipient lists, and view full rendered HTML templates in real time.",
-    tip: "Audits outgoing resident notifications and verification emails.",
+    tip: "Thank you for exploring Gulmohar Meadows! Click 'Finish Tour' to explore freely.",
     placement: 'bottom'
-  },
-  {
-    targetId: 'tour-chatbot-launcher',
-    title: "9. 24/7 AI Concierge Assistance",
-    badge: "Admin Demo: AI Station",
-    speech: "Our AI Concierge is available 24/7 on both the Login screen and admin dashboard to guide new residents, answer maintenance FAQs, and streamline operations.",
-    tip: "Thank you for exploring Gulmohar Meadows! Click 'Finish Tour' anytime to explore freely.",
-    placement: 'top'
   }
 ];
 
@@ -160,181 +144,191 @@ export default function AvatarTourGuide({ isOpen, onClose }) {
   const steps = isAdmin ? ADMIN_STEPS : RESIDENT_STEPS;
   
   const [currentStep, setCurrentStep] = useState(0);
+  const [isAutoPlay, setIsAutoPlay] = useState(false);
   const [targetRect, setTargetRect] = useState(null);
-  const [autoPlay, setAutoPlay] = useState(false);
 
-  // Position calculation with smooth scroll and bounding box expansion
-  const measureTarget = (stepIndex) => {
-    const step = steps[stepIndex];
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentStep(0);
+      setIsAutoPlay(false);
+      playAppleChime();
+    }
+  }, [isOpen]);
+
+  // Position highlight relative to element
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const step = steps[currentStep];
     if (!step) return;
 
     const el = document.getElementById(step.targetId);
     if (el) {
+      const rect = el.getBoundingClientRect();
+      setTargetRect({
+        top: rect.top + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+        height: rect.height
+      });
+      // Scroll into view smoothly
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => {
-        const rect = el.getBoundingClientRect();
-        setTargetRect({
-          top: rect.top - 8,
-          left: rect.left - 8,
-          width: rect.width + 16,
-          height: rect.height + 16
-        });
-      }, 300);
     } else {
       setTargetRect(null);
     }
-  };
+  }, [isOpen, currentStep, steps]);
 
-  useEffect(() => {
-    if (isOpen) {
-      measureTarget(currentStep);
-    }
-  }, [isOpen, currentStep]);
-
-  // Auto-play timer (7s per step)
+  // Auto-play timer
   useEffect(() => {
     let timer;
-    if (isOpen && autoPlay) {
+    if (isOpen && isAutoPlay) {
       timer = setInterval(() => {
         setCurrentStep(prev => {
           if (prev < steps.length - 1) {
             return prev + 1;
           } else {
-            setAutoPlay(false);
+            setIsAutoPlay(false);
             return prev;
           }
         });
       }, 7000);
     }
     return () => clearInterval(timer);
-  }, [isOpen, autoPlay, currentStep, steps.length]);
-
-  const handleNext = () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(prev => prev + 1);
-    } else {
-      handleFinish();
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
-    }
-  };
-
-  const handleFinish = () => {
-    setAutoPlay(false);
-    onClose();
-  };
+  }, [isOpen, isAutoPlay, steps.length]);
 
   if (!isOpen) return null;
 
   const step = steps[currentStep];
+  const isFirst = currentStep === 0;
+  const isLast = currentStep === steps.length - 1;
+
+  const handleNext = () => {
+    if (isLast) {
+      onClose();
+    } else {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (!isFirst) {
+      setCurrentStep(prev => prev - 1);
+    }
+  };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, pointerEvents: 'none' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, pointerEvents: 'auto' }}>
       
-      {/* Dynamic Animated Spotlight Cutout */}
+      {/* Dimmed backdrop */}
+      <div 
+        style={{ position: 'absolute', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(2px)' }}
+        onClick={onClose}
+      />
+
+      {/* Target Element Highlight Box */}
       {targetRect && (
         <div 
           style={{
-            position: 'fixed',
-            top: targetRect.top,
-            left: targetRect.left,
-            width: targetRect.width,
-            height: targetRect.height,
+            position: 'absolute',
+            top: targetRect.top - 6,
+            left: targetRect.left - 6,
+            width: targetRect.width + 12,
+            height: targetRect.height + 12,
             borderRadius: '16px',
-            boxShadow: '0 0 0 9999px rgba(15, 23, 42, 0.75)',
+            boxShadow: '0 0 0 9999px rgba(15, 23, 42, 0.65)',
             border: '2px solid #D97706',
-            transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-            pointerEvents: 'auto'
+            pointerEvents: 'none',
+            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            zIndex: 10000
           }}
         />
       )}
 
-      {/* Floating Tour Guide Dialog Card */}
+      {/* Tour Card Modal */}
       <div 
         style={{
           position: 'fixed',
-          bottom: '36px',
-          left: '36px',
-          maxWidth: '460px',
-          width: 'calc(100vw - 72px)',
+          bottom: '32px',
+          right: '32px',
+          maxWidth: '440px',
+          width: 'calc(100vw - 64px)',
           background: 'var(--bg-surface)',
           borderRadius: 'var(--radius-squircle-md)',
-          border: '1.5px solid var(--border-color)',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+          border: '1px solid var(--border-color)',
           padding: '24px',
-          color: 'var(--text-main)',
-          pointerEvents: 'auto',
-          zIndex: 1150
+          zIndex: 10001,
+          animation: 'fadeIn 0.25s ease'
         }}
       >
+        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="pill-badge pill-open" style={{ fontSize: '10px' }}>
+            <span className="pill-badge pill-open" style={{ fontSize: '11px', textTransform: 'uppercase' }}>
               {step.badge}
             </span>
-            <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>
               Step {currentStep + 1} of {steps.length}
             </span>
           </div>
 
           <button 
-            onClick={handleFinish} 
+            onClick={onClose}
             style={{ background: 'var(--bg-subtle)', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-main)' }}
           >
             <X size={14} />
           </button>
         </div>
 
-        <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em', marginBottom: '8px' }}>
+        {/* Title & Speech */}
+        <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
           {step.title}
         </h3>
-
-        <p style={{ fontSize: '14px', color: 'var(--text-sub)', lineHeight: 1.55, marginBottom: '14px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--text-sub)', lineHeight: 1.6, marginBottom: '14px' }}>
           {step.speech}
         </p>
 
+        {/* Tip Box */}
         {step.tip && (
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)', background: 'var(--bg-subtle)', padding: '8px 12px', borderRadius: 'var(--radius-squircle-sm)', border: '1px solid var(--border-color)', marginBottom: '18px' }}>
-            💡 <strong>Pro Tip:</strong> {step.tip}
+          <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-squircle-sm)', padding: '10px 12px', fontSize: '12px', color: 'var(--text-main)', marginBottom: '18px', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+            <span>💡</span>
+            <span><strong>Pro Tip:</strong> {step.tip}</span>
           </div>
         )}
 
-        {/* Action Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-          <button 
+        {/* Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '14px' }}>
+          
+          <button
+            onClick={() => setIsAutoPlay(!isAutoPlay)}
             className="btn btn-secondary btn-sm"
-            onClick={() => setAutoPlay(!autoPlay)}
-            style={{ fontSize: '12px', padding: '6px 12px' }}
+            style={{ fontSize: '11px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '4px' }}
           >
-            {autoPlay ? <Pause size={12} /> : <Play size={12} />}
-            <span>{autoPlay ? 'Pause Auto-Play' : '▶ Auto-Play'}</span>
+            {isAutoPlay ? <Pause size={12} /> : <Play size={12} />}
+            <span>{isAutoPlay ? 'Pause' : 'Auto-Play'}</span>
           </button>
 
           <div style={{ display: 'flex', gap: '8px' }}>
-            {currentStep > 0 && (
+            {!isFirst && (
               <button 
-                className="btn btn-secondary btn-sm"
                 onClick={handlePrev}
+                className="btn btn-secondary btn-sm"
                 style={{ fontSize: '12px', padding: '6px 12px' }}
               >
-                <ChevronLeft size={14} />
-                <span>Prev</span>
+                <ChevronLeft size={14} /> Prev
               </button>
             )}
 
             <button 
-              className="btn btn-amber btn-sm"
               onClick={handleNext}
+              className="btn btn-amber btn-sm"
               style={{ fontSize: '12px', padding: '6px 16px' }}
             >
-              <span>{currentStep === steps.length - 1 ? 'Finish Tour' : 'Next Step'}</span>
+              <span>{isLast ? 'Finish Tour' : 'Next'}</span>
               <ChevronRight size={14} />
             </button>
           </div>
+
         </div>
 
       </div>
