@@ -1,40 +1,90 @@
-# REST API Documentation: Society Maintenance Tracker
+# 🔌 REST API Specification: Society Maintenance Tracker
 
 **Base URL**: `/api/v1`  
-**Authentication**: Bearer JWT (`Authorization: Bearer <token>`)
+**Protocol**: HTTP/1.1 or HTTP/2 over TLS (HTTPS)  
+**Content-Type**: `application/json` (or `multipart/form-data` for file uploads)  
+**Authentication**: Bearer JWT (`Authorization: Bearer <token>`)  
 
 ---
 
-## 1. Authentication Endpoints (`/api/v1/auth`)
+## 📑 Endpoints Summary Table
 
-### `POST /auth/register`
-Registers a new resident account.
+| Method | Endpoint | Access Level | Description |
+| :--- | :--- | :--- | :--- |
+| **GET** | `/health` | Public | Service health check and database connectivity probe |
+| **POST** | `/api/v1/auth/register` | Public | Register a new resident flat account (triggers approval queue) |
+| **POST** | `/api/v1/auth/login` | Public | Authenticate user credentials and retrieve JWT token |
+| **GET** | `/api/v1/auth/me` | Authenticated | Retrieve authenticated user profile and permissions |
+| **GET** | `/api/v1/auth/pending-approvals` | Admin Only | List resident accounts awaiting RWA committee approval |
+| **PATCH** | `/api/v1/auth/users/:id/approve` | Admin Only | Approve and activate a resident account |
+| **DELETE** | `/api/v1/auth/users/:id/reject` | Admin Only | Reject and purge a pending registration request |
+| **GET** | `/api/v1/complaints` | Authenticated | List complaints with SLA overdue calculation and filters |
+| **GET** | `/api/v1/complaints/stats` | Admin Only | Aggregated KPI metrics and category distribution |
+| **GET** | `/api/v1/complaints/:id` | Authenticated | Retrieve detailed ticket with chronological audit timeline |
+| **POST** | `/api/v1/complaints` | Resident Only | Lodge a new maintenance ticket with room & photo upload |
+| **PATCH** | `/api/v1/complaints/:id/status` | Admin Only | Update ticket status/priority, append note, and email resident |
+| **GET** | `/api/v1/notices` | Authenticated | Retrieve active society notices with pinned priority order |
+| **POST** | `/api/v1/notices` | Admin Only | Publish notice and trigger mass email broadcast |
+| **DELETE** | `/api/v1/notices/:id` | Admin Only | Delete/archive an existing society notice |
+| **GET** | `/api/v1/settings/sla-threshold` | Authenticated | Retrieve currently active SLA overdue threshold days |
+| **PATCH** | `/api/v1/settings/sla-threshold` | Admin Only | Update runtime SLA threshold days (1 to 60 days) |
+| **GET** | `/api/v1/settings/email-outbox` | Authenticated | Live in-memory email outbox stream for auditing & evaluation |
+
+---
+
+## 1. System Health (`/api/health`)
+
+### `GET /api/health`
+Probes API server operational status and SQLite database connection.
 * **Access**: Public
+* **Response (200 OK)**:
+  ```json
+  {
+    "status": "ok",
+    "timestamp": "2026-08-24T00:00:00.000Z",
+    "service": "Society Maintenance Tracker API",
+    "database": "connected"
+  }
+  ```
+
+---
+
+## 2. Authentication & Resident Approval (`/api/v1/auth`)
+
+### `POST /api/v1/auth/register`
+Creates a new resident account and submits it to the RWA verification queue (`is_approved = 0`).
 * **Request Body (JSON)**:
   ```json
   {
-    "name": "Aarav Sharma",
-    "email": "aarav@society.com",
+    "name": "Kavita Rao",
+    "email": "kavita@society.com",
     "password": "password123",
-    "flat_number": "Flat 101, Block A",
-    "phone": "+91 9811122334"
+    "flat_number": "Tower D - Flat 204",
+    "phone": "+91 9876543210"
   }
   ```
 * **Response (201 Created)**:
   ```json
   {
     "success": true,
-    "message": "Resident registered successfully.",
+    "message": "Registration submitted! Your flat details are pending RWA verification.",
     "data": {
-      "token": "eyJhbGciOi...",
-      "user": { "id": "usr_...", "name": "Aarav Sharma", "email": "aarav@society.com", "role": "resident" }
+      "user": {
+        "id": "usr_1787490000_abc",
+        "name": "Kavita Rao",
+        "email": "kavita@society.com",
+        "flat_number": "Tower D - Flat 204",
+        "role": "resident",
+        "is_approved": 0
+      }
     }
   }
   ```
 
-### `POST /auth/login`
-Authenticates a user (Resident or Admin).
-* **Access**: Public
+---
+
+### `POST /api/v1/auth/login`
+Authenticates credentials and signs an `HS256` JSON Web Token.
 * **Request Body (JSON)**:
   ```json
   {
@@ -42,114 +92,220 @@ Authenticates a user (Resident or Admin).
     "password": "admin123"
   }
   ```
-* **Response (200 OK)**: Returns JWT token and sanitized user profile with role.
-
-### `GET /auth/me`
-Retrieves current authenticated profile.
-* **Access**: Authenticated (Resident or Admin)
+* **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Login successful",
+    "data": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "user": {
+        "id": "usr_admin_001",
+        "name": "Rajesh Kumar",
+        "email": "admin@society.com",
+        "flat_number": "Estate Office",
+        "role": "admin",
+        "is_approved": 1
+      }
+    }
+  }
+  ```
 
 ---
 
-## 2. Complaints Endpoints (`/api/v1/complaints`)
+## 3. Complaints & History (`/api/v1/complaints`)
 
-### `GET /complaints`
-Retrieves complaints with overdue enrichment and priority sorting.
-* **Access**: Authenticated (Residents see their own tickets; Admins see all society tickets)
+### `GET /api/v1/complaints`
+Retrieves tickets filtered by query parameters and enriched with dynamic SLA calculations.
+* **Headers**: `Authorization: Bearer <token>`
 * **Query Parameters**:
-  * `status`: `all` | `Open` | `In Progress` | `Resolved`
+  * `status`: `all` | `Open` | `In Progress` | `Resolved` | `overdue`
   * `category`: `all` | `Plumbing` | `Electrical` | `Carpentry` | `Security` | `Common Area` | `Cleanliness` | `Lift / Elevator` | `Other`
   * `priority`: `all` | `Low` | `Medium` | `High`
-  * `search`: text string (searches title, description, resident name, flat number)
+  * `search`: `string` (searches title, description, resident name, flat number)
   * `from_date` / `to_date`: `YYYY-MM-DD`
-* **Response (200 OK)**: Array of complaint objects enriched with `is_overdue`, `days_open`, and `overdue_threshold`.
-
-### `GET /complaints/:id`
-Retrieves detailed complaint object and its complete chronological audit history timeline.
-* **Access**: Authenticated (Owner resident or Admin)
 * **Response (200 OK)**:
   ```json
   {
     "success": true,
+    "data": [
+      {
+        "id": "cmp_101",
+        "resident_id": "usr_res_001",
+        "resident_name": "Aarav Sharma",
+        "flat_number": "Tower A - Flat 402",
+        "title": "Master Bathroom Water Heater Tripping",
+        "category": "Electrical",
+        "priority": "High",
+        "status": "In Progress",
+        "photo_url": "/uploads/photo_17874000.jpg",
+        "arrival_slot": "10:00 AM - 12:00 PM",
+        "days_open": 4,
+        "is_overdue": 1,
+        "overdue_threshold_days": 3,
+        "created_at": "2026-08-20T10:00:00.000Z"
+      }
+    ]
+  }
+  ```
+
+---
+
+### `POST /api/v1/complaints`
+Lodges a new service ticket with multipart form photo upload.
+* **Headers**: `Authorization: Bearer <resident_token>`, `Content-Type: multipart/form-data`
+* **Form Fields**:
+  * `title`: "Kitchen Sink Drain Clogged"
+  * `description`: "Water overflowing into cabinet under sink."
+  * `category`: "Plumbing"
+  * `priority`: "Medium"
+  * `arrival_slot`: "02:00 PM - 04:00 PM"
+  * `photo`: *(Binary image file: JPEG, PNG, or WebP)*
+* **Response (201 Created)**:
+  ```json
+  {
+    "success": true,
+    "message": "Complaint lodged successfully. Notification sent.",
     "data": {
-      "complaint": { "id": "cmp_101", "title": "...", "status": "In Progress", "photo_url": "/uploads/...", ... },
-      "history": [
-        { "id": "hist_1", "actor_name": "Aarav", "previous_status": null, "new_status": "Open", "note": "Complaint filed", "created_at": "..." },
-        { "id": "hist_2", "actor_name": "Rajesh (Admin)", "previous_status": "Open", "new_status": "In Progress", "note": "Plumber visiting tomorrow", "created_at": "..." }
-      ]
+      "id": "cmp_108",
+      "status": "Open",
+      "category": "Plumbing",
+      "photo_url": "/uploads/photo_1787491234_abc.jpg"
     }
   }
   ```
 
-### `POST /complaints`
-Creates a new maintenance complaint.
-* **Access**: Authenticated (Resident)
-* **Content-Type**: `multipart/form-data`
-* **Fields**: `title` (string, required), `description` (string, required), `category` (string, required), `priority` (string, optional), `photo` (file, optional).
-* **Response (201 Created)**: Returns created complaint and logs initial history record.
+---
 
-### `PATCH /complaints/:id/status`
-Updates complaint status and priority with actor attribution and triggers resident email.
-* **Access**: Admin only
+### `PATCH /api/v1/complaints/:id/status`
+Updates ticket lifecycle state, appends an immutable temporal audit log row, and emails the resident.
+* **Headers**: `Authorization: Bearer <admin_token>`, `Content-Type: application/json`
 * **Request Body (JSON)**:
   ```json
   {
-    "status": "In Progress",
+    "status": "Resolved",
     "priority": "High",
-    "note": "Otis technician scheduled for Tuesday 10 AM inspection."
+    "note": "Heating element replaced under manufacturer warranty. Verified operational."
   }
   ```
-* **Response (200 OK)**: Updated complaint and newly appended audit log entry.
-
-### `GET /complaints/dashboard/stats`
-Aggregates key metrics for the Admin Dashboard.
-* **Access**: Admin only
 * **Response (200 OK)**:
   ```json
   {
     "success": true,
+    "message": "Complaint status updated and resident notified.",
     "data": {
-      "summary": { "total": 6, "open": 3, "in_progress": 2, "resolved": 1, "overdue": 2, "notices": 3, "overdue_threshold_days": 3 },
-      "by_category": { "Plumbing": 1, "Electrical": 1, "Lift / Elevator": 1, ... },
-      "by_priority": { "High": 3, "Medium": 2, "Low": 1 }
+      "complaint": {
+        "id": "cmp_101",
+        "status": "Resolved",
+        "resolved_at": "2026-08-24T00:30:00.000Z"
+      },
+      "history_entry": {
+        "id": "hist_1787495000_xyz",
+        "actor_name": "Rajesh Kumar",
+        "actor_role": "admin",
+        "previous_status": "In Progress",
+        "new_status": "Resolved",
+        "note": "Heating element replaced under manufacturer warranty. Verified operational.",
+        "created_at": "2026-08-24T00:30:00.000Z"
+      }
     }
   }
   ```
 
 ---
 
-## 3. Notices Endpoints (`/api/v1/notices`)
+## 4. Notice Board (`/api/v1/notices`)
 
-### `GET /notices`
-Fetches community notices sorted with pinned important announcements first (`is_important DESC, created_at DESC`).
-* **Access**: Authenticated
-
-### `POST /notices`
-Publishes a new society notice. If marked `is_important`, triggers broadcast email to all residents.
-* **Access**: Admin only
+### `POST /api/v1/notices`
+Publishes an official announcement with optional mass-email broadcast.
+* **Headers**: `Authorization: Bearer <admin_token>`, `Content-Type: application/json`
 * **Request Body (JSON)**:
   ```json
   {
-    "title": "Water Tank Cleaning on Friday",
-    "content": "Water supply suspended from 9 AM to 1 PM for maintenance.",
-    "is_important": true
+    "title": "Scheduled Overhead Water Tank Cleaning",
+    "content": "All towers will experience low water pressure between 9 AM and 2 PM on Sunday.",
+    "is_important": 1,
+    "expires_at": "2026-08-30T23:59:59.000Z"
+  }
+  ```
+* **Response (201 Created)**:
+  ```json
+  {
+    "success": true,
+    "message": "Notice published and broadcast email queued for all active residents.",
+    "data": {
+      "id": "ntc_105",
+      "title": "Scheduled Overhead Water Tank Cleaning",
+      "is_important": 1
+    }
   }
   ```
 
-### `DELETE /notices/:id`
-Deletes a notice.
-* **Access**: Admin only
+---
+
+## 5. Dynamic Settings & Outbox (`/api/v1/settings`)
+
+### `PATCH /api/v1/settings/sla-threshold`
+Updates the society-wide SLA overdue limit on the fly without server restart.
+* **Request Body (JSON)**:
+  ```json
+  {
+    "threshold_days": 2
+  }
+  ```
+* **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "SLA threshold updated to 2 days.",
+    "data": {
+      "threshold_days": 2
+    }
+  }
+  ```
 
 ---
 
-## 4. Settings & Evaluation Endpoints (`/api/v1/settings`)
+### `GET /api/v1/settings/email-outbox`
+Retrieves live in-memory transactional email logs and HTML templates for evaluation.
+* **Headers**: `Authorization: Bearer <token>`
+* **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "id": "eml_1787499000_1",
+        "to": "aarav@society.com",
+        "subject": "✅ Update: Complaint #CMP-101 Marked as Resolved",
+        "template_type": "status_update",
+        "dispatched_at": "2026-08-24T00:30:00.000Z",
+        "html_preview": "<div style=\"font-family: sans-serif; ...\">...</div>"
+      }
+    ]
+  }
+  ```
 
-### `GET /settings`
-Fetches system settings map.
+---
 
-### `PATCH /settings/overdue-threshold`
-Updates the overdue days threshold.
-* **Access**: Admin only
-* **Request Body (JSON)**: `{ "days": 5 }`
+## 💻 Example `curl` Testing Commands
 
-### `GET /settings/email-outbox`
-Retrieves transactional email dispatches for evaluation, verification, and live demo purposes.
+```bash
+# 1. Health Probe
+curl -X GET https://society-tracker-api-1de4.onrender.com/api/health
+
+# 2. Authenticate as Admin
+curl -X POST https://society-tracker-api-1de4.onrender.com/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@society.com","password":"admin123"}'
+
+# 3. Retrieve Active Queue
+curl -X GET https://society-tracker-api-1de4.onrender.com/api/v1/complaints \
+  -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
+
+# 4. Update SLA Threshold to 2 Days
+curl -X PATCH https://society-tracker-api-1de4.onrender.com/api/v1/settings/sla-threshold \
+  -H "Authorization: Bearer <ADMIN_JWT_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"threshold_days":2}'
+```
